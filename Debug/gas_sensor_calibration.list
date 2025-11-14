@@ -1680,13 +1680,13 @@ hm_init()
  8000dde:	e013      	b.n	8000e08 <hm_init+0x440>
         {
             // Time: 14:23:00
-            time_ok = os_rtc_set_time(hm->os.rtc, 14, 7, 0);
+            time_ok = os_rtc_set_time(hm->os.rtc, 16, 30, 0);
  8000de0:	4b34      	ldr	r3, [pc, #208]	@ (8000eb4 <hm_init+0x4ec>)
  8000de2:	681b      	ldr	r3, [r3, #0]
  8000de4:	68d8      	ldr	r0, [r3, #12]
  8000de6:	2300      	movs	r3, #0
- 8000de8:	2207      	movs	r2, #7
- 8000dea:	210e      	movs	r1, #14
+ 8000de8:	221e      	movs	r2, #30
+ 8000dea:	2110      	movs	r1, #16
  8000dec:	f7ff fcf8 	bl	80007e0 <os_rtc_set_time>
  8000df0:	66f8      	str	r0, [r7, #108]	@ 0x6c
             if (!time_ok)
@@ -2520,9 +2520,9 @@ static void MX_RTC_Init(void)
  80012e8:	4b10      	ldr	r3, [pc, #64]	@ (800132c <MX_RTC_Init+0x5c>)
  80012ea:	4a11      	ldr	r2, [pc, #68]	@ (8001330 <MX_RTC_Init+0x60>)
  80012ec:	601a      	str	r2, [r3, #0]
-  hrtc.Init.HourFormat = RTC_HOURFORMAT_12;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
  80012ee:	4b0f      	ldr	r3, [pc, #60]	@ (800132c <MX_RTC_Init+0x5c>)
- 80012f0:	2240      	movs	r2, #64	@ 0x40
+ 80012f0:	2200      	movs	r2, #0
  80012f2:	605a      	str	r2, [r3, #4]
   hrtc.Init.AsynchPrediv = 127;
  80012f4:	4b0d      	ldr	r3, [pc, #52]	@ (800132c <MX_RTC_Init+0x5c>)

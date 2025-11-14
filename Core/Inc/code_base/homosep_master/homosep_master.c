@@ -154,7 +154,7 @@ hm_init()
         while (retries > 0 && !time_ok)
         {
             // Time: 14:23:00
-            time_ok = os_rtc_set_time(hm->os.rtc, 14, 7, 0);
+            time_ok = os_rtc_set_time(hm->os.rtc, 16, 30, 0);
             if (!time_ok)
             {
                 os_delay_ms(100);
