@@ -1,6 +1,9 @@
-
 #ifndef OS_STM32_CORE_H
 #define OS_STM32_CORE_H
+
+
+// NOTE(ARUN):@general
+#define os_delay_ms(ms) HAL_Delay(ms)
 
 // NOTE(ARUN): @GPIO
 
@@ -338,6 +341,9 @@ struct OS_Rtc
     RTC_HandleTypeDef *handle;
 };
 
+// RTC initialization check magic number
+#define OS_RTC_INIT_MAGIC 0xBEEFCAFE
+
 internal inline void
 os_rtc_init(OS_Rtc *rtc, RTC_HandleTypeDef *handle)
 {
@@ -466,7 +472,127 @@ os_rtc_clear_backup(OS_Rtc *rtc, u32 backup_register)
     HAL_RTCEx_BKUPWrite(rtc->handle, backup_register, 0);
 }
 
-// NOTE(ARUN):@general
-#define os_delay_ms(ms) HAL_Delay(ms)
+// NOTE(ARUN): @RTC_Extended - Extended RTC functions
 
-#endif //STM32_H
+// Set complete date and time with retry logic
+internal b32
+os_rtc_set_datetime(OS_Rtc *rtc, u8 hours, u8 minutes, u8 seconds,
+                    u8 year, u8 month, u8 date, u8 weekday)
+{
+    b32 date_ok = 0;
+    b32 time_ok = 0;
+    u8 retries = 3;
+
+    // Try to set date with retries
+    while (retries > 0 && !date_ok)
+    {
+        date_ok = os_rtc_set_date(rtc, year, month, date, weekday);
+        if (!date_ok) os_delay_ms(100);
+        retries--;
+    }
+
+    // Try to set time with retries
+    retries = 3;
+    while (retries > 0 && !time_ok)
+    {
+        time_ok = os_rtc_set_time(rtc, hours, minutes, seconds);
+        if (!time_ok) os_delay_ms(100);
+        retries--;
+    }
+
+    return date_ok && time_ok;
+}
+
+// Get complete date and time in one call
+internal b32
+os_rtc_get_datetime(OS_Rtc *rtc, u8 *hours, u8 *minutes, u8 *seconds,
+                    u8 *year, u8 *month, u8 *date, u8 *weekday)
+{
+    b32 time_ok = os_rtc_get_time(rtc, hours, minutes, seconds);
+    b32 date_ok = os_rtc_get_date(rtc, year, month, date, weekday);
+    return time_ok && date_ok;
+}
+
+// Check if RTC has been initialized
+internal b32
+os_rtc_is_initialized(OS_Rtc *rtc, u32 backup_register, u32 magic_value)
+{
+    HAL_PWR_EnableBkUpAccess();
+    u32 backup_value = os_rtc_backup_read(rtc, backup_register);
+    return (backup_value == magic_value);
+}
+
+// Mark RTC as initialized
+internal void
+os_rtc_mark_initialized(OS_Rtc *rtc, u32 backup_register, u32 magic_value)
+{
+    HAL_PWR_EnableBkUpAccess();
+    os_rtc_backup_write(rtc, backup_register, magic_value);
+}
+
+// Initialize LSE oscillator with timeout
+internal b32
+os_rtc_init_lse(u32 timeout_ms)
+{
+    __HAL_RCC_LSE_CONFIG(RCC_LSE_ON);
+
+    u32 elapsed = 0;
+    while(__HAL_RCC_GET_FLAG(RCC_FLAG_LSERDY) == RESET && elapsed < timeout_ms)
+    {
+        os_delay_ms(1);
+        elapsed++;
+    }
+
+    return (elapsed < timeout_ms);
+}
+
+// Format datetime to string buffer
+internal u32
+os_rtc_format_datetime(char *buffer, u32 buffer_size,
+                       u8 year, u8 month, u8 date,
+                       u8 hours, u8 minutes, u8 seconds,
+                       b32 date_valid)
+{
+    if (date_valid && month > 0 && date > 0)
+    {
+        return snprintf(buffer, buffer_size, "20%02d-%02d-%02d %02d:%02d:%02d",
+                       year, month, date, hours, minutes, seconds);
+    }
+    else
+    {
+        return snprintf(buffer, buffer_size, "RTC NOT SET - %02d:%02d:%02d",
+                       hours, minutes, seconds);
+    }
+}
+
+// Check if date values are valid
+internal b32
+os_rtc_validate_date(u8 year, u8 month, u8 date)
+{
+    if (month < 1 || month > 12) return 0;
+    if (date < 1 || date > 31) return 0;
+
+    // Check for months with fewer days
+    if (month == 2) // February
+    {
+        u32 full_year = 2000 + year;
+        b32 is_leap = ((full_year % 4 == 0) && (full_year % 100 != 0)) || (full_year % 400 == 0);
+        return date <= (is_leap ? 29 : 28);
+    }
+    else if (month == 4 || month == 6 || month == 9 || month == 11)
+    {
+        return date <= 30;
+    }
+
+    return 1;
+}
+
+// Check if time values are valid
+internal b32
+os_rtc_validate_time(u8 hours, u8 minutes, u8 seconds)
+{
+    return (hours < 24) && (minutes < 60) && (seconds < 60);
+}
+
+
+#endif //OS_STM32_CORE_H
